@@ -12,6 +12,12 @@ lista_nicks = []
 lista_sala = {}
 
 
+sala = {
+    'nome' : "",
+    'jogadores' : [],
+    'baralho': ""
+}
+
 # Função para controlar a parte inicial do programa (criação de sala, etc)
 def beforeGame(con, cliente):
     print ('Conectado por', cliente)
@@ -88,21 +94,39 @@ def resolveRooms(con, cliente, raw_cmd):
             return
         nome_sala = command[1]
         lista_sala[command[1]][0] = lista_sala[command[1]][0] + 1
-        if ((lista_sala[command[1]][0] == len(lista_sala[command[1]])-1) and lista_sala[command[1]][0] > 1):
-            lista_sala[command[1]][0].remove()
-            print (lista_sala[command[1]])
-            for c in lista_jogadores:
-                if c in lista_sala[command[1]]:
-                    socket = c['socket']
-                    socket.send("Jogo iniciando".encode())
+        con.send("Aguardando outros jogadores".encode())
+        if ((lista_sala[command[1]][0] == len(lista_sala[command[1]])-1)):
+        # if ((lista_sala[command[1]][0] == len(lista_sala[command[1]])-1) and lista_sala[command[1]][0] > 1):
+
+            configGame(nome_sala)
 
     else:
         con.send("Comando inválido, digite novamente".encode())
     return
 
-def game(con, cliente):
-    baralho = Deck()
+def configGame(nome_sala):
 
+    d = Deck()
+    sala['nome'] = nome_sala
+    i = 1
+    for player in lista_jogadores:
+        if i == len(lista_sala[nome_sala]):
+            break
+        if player['socket'] == lista_sala[nome_sala][i]:
+            jogador = {
+                'socket': player['socket'],
+                'fichas': player['fichas'],
+                'cartas': []
+            }
+            sala['jogadores'].append(jogador)
+        i = i + 1
+    
+    sala['baralho'] = d
+    sala['baralho'].shuffle()
+    game(sala)
+
+def game(sala):
+    pass
 
 
 tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
