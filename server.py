@@ -94,7 +94,7 @@ def resolveRooms(con, cliente, raw_cmd):
             return
         nome_sala = command[1]
         lista_sala[command[1]][0] = lista_sala[command[1]][0] + 1
-        con.send("Aguardando outros jogadores".encode())
+        # con.send("Aguardando outros jogadores".encode())
         if ((lista_sala[command[1]][0] == len(lista_sala[command[1]])-1)):
         # if ((lista_sala[command[1]][0] == len(lista_sala[command[1]])-1) and lista_sala[command[1]][0] > 1):
 
@@ -121,6 +121,12 @@ def configGame(nome_sala):
             sala['jogadores'].append(jogador)
         i = i + 1
     
+    sala['jogadores'].append(jogador = {
+                        'socket': 'dealer',
+                        'fichas': 100,
+                        'cartas': []
+    })
+    
     sala['baralho'] = d
     sala['baralho'].shuffle()
     game(sala)
@@ -129,7 +135,23 @@ def game(sala):
     for player in sala['jogadores']:
         player['cartas'].append(sala['baralho'].deal())
         player['cartas'].append(sala['baralho'].deal())
-        print(player)
+        #resolver problema de envio múltiplo
+        #player['socket'].send(str(player['cartas'][1]).encode())
+        
+
+def treatCards(carta):
+    carta = str(carta)
+    if (len(carta) == 3):
+        c = (int(carta[0]) * 10) + int(carta[1])
+    else:
+        c = int(carta[0]) 
+    return c
+
+
+def checkBlackjack(cartas):
+    pass
+
+
 
 
 tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
