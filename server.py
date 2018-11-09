@@ -126,7 +126,10 @@ def configGame(nome_sala):
     game(sala)
 
 def game(sala):
-    pass
+    for player in sala['jogadores']:
+        player['cartas'].append(sala['baralho'].deal())
+        player['cartas'].append(sala['baralho'].deal())
+        print(player)
 
 
 tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
