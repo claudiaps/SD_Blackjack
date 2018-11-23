@@ -92,10 +92,9 @@ def resolveRooms(con, cliente, raw_cmd):
                 return
             if command[1] in lista_sala:
                 lista_sala[command[1]].append(con)
-                #
                 con.send(("Sucesso ao entrar na sala " + command[1]).encode())
             else:
-                #
+
                 con.send(
                     "Não há uma sala com este nome, por isso foi criada uma nova sala!".encode())
                 lista_sala[command[1]] = []
@@ -116,13 +115,16 @@ def resolveRooms(con, cliente, raw_cmd):
                 return
             if(checkRoom(con) == -1):
                 return
-            nome_sala = command[1]
-            lista_sala[command[1]][0] = lista_sala[command[1]][0] + 1
-            con.send("Aguardando outros jogadores".encode())
-            con.send("\nAjustando contagem de cartas...".encode())
-            # if ((lista_sala[command[1]][0] == len(lista_sala[command[1]])-1)):
-            if ((lista_sala[command[1]][0] == len(lista_sala[command[1]])-1) and lista_sala[command[1]][0] > 1):
-                configGame(nome_sala)
+            else:
+                nome_sala = command[1]
+                lista_sala[command[1]][0] = lista_sala[command[1]][0] + 1
+                con.send("Aguardando outros jogadores".encode())
+                con.send("\nAjustando contagem de cartas...".encode())
+                while True:
+                    if ((lista_sala[command[1]][0] == len(lista_sala[command[1]])-1)):
+                    # if ((lista_sala[command[1]][0] == len(lista_sala[command[1]])-1) and lista_sala[command[1]][0] > 1):
+                        configGame(nome_sala)
+                        break
 
         else:
            
@@ -131,11 +133,20 @@ def resolveRooms(con, cliente, raw_cmd):
     except:
         print('azedou')
 
+def addDealer(nome_sala):
+    for player in sala['jogadores']:
+        if player['socket'] == 'dealer':
+            return
+            
+    dealer = {
+    'socket': 'dealer',
+    'fichas': 100, 
+    'cartas': []}
+    sala['jogadores'].append(dealer)
 
 def configGame(nome_sala):
 
     #TODO tratar remoção da variável lista_sala
-    
 
     d = Deck()
     sala['nome'] = nome_sala
@@ -144,6 +155,9 @@ def configGame(nome_sala):
         if i == len(lista_sala[nome_sala]):
             break
         if player['socket'] == lista_sala[nome_sala][i]:
+            for i in sala['jogadores']:
+                if player['socket'] == i['socket']:
+                    break
             jogador = {
                 'socket': player['socket'],
                 'fichas': player['fichas'],
@@ -152,16 +166,16 @@ def configGame(nome_sala):
             sala['jogadores'].append(jogador)
         i = i + 1
 
-    dealer = {
-        'socket': 'dealer',
-        'fichas': 100, 
-        'cartas': []}
+    addDealer(nome_sala)    
 
-    sala['jogadores'].append(dealer)
-    print(sala['jogadores'][len(sala['jogadores'])-1])
-
+    print(sala['jogadores'])
+    print('aquiiiii')
     sala['baralho'] = d
     sala['baralho'].shuffle()
+
+    for player in sala['jogadores']:
+        print('player',player)
+        player['socket'].send("OLAAAAAAAAA".encode())
     game(sala)
 
 
