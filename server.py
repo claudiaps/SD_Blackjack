@@ -8,7 +8,7 @@ import socket
 import _thread
 
 HOST = ''              # Endereco IP do Servidor
-PORT = 4000            # Porta que o Servidor esta
+PORT = 5000            # Porta que o Servidor esta
 
 lista_jogadores = []
 lista_nicks = []
@@ -38,22 +38,27 @@ def beforeGame(con, cliente):
     print ('Conectado por', cliente)
     getNick(con)
     while True:
-        con.send('SEND'.encode())
-        command = con.recv(1024)
-        command = command.decode()
-        command = command.upper()
-        if command == "SAIR":
-            clientExit(con)
-            break
-        resolveRooms(con, cliente, command)
-        if(control_room == -1):
-            break
+        try:
+            time.sleep(1)
+            con.send('SEND'.encode())
+            command = con.recv(1024)
+            command = command.decode()
+            command = command.upper()
+            if command == "SAIR":
+                clientExit(con)
+                break
+            resolveRooms(con, cliente, command)
+            if(control_room == -1):
+                break
+        except Exception as ex:
+            PrintException()
 
 
 # Função para armazenar o nick do jogador
 def getNick(con):
     try:
         con.send("Digite seu nick: ".encode())
+        time.sleep(1)
         con.send('SEND'.encode())
         nick = con.recv(1024)
         nick = nick.decode()
@@ -149,28 +154,60 @@ def resolveRooms(con, cliente, raw_cmd):
     except Exception as ex:
         PrintException()
 
+def sendCards():
+    for player in sala['jogadores']:
+        for p in sala['jogadores']:
+            if(player['socket'] != 'dealer'):
+                if(p['socket'] != player['socket']):
+                    time.sleep(1)
+                    player['socket'].send(('\nCartas do jogador: ' + p['nick']).encode())
+                    for cartas in p['cartas']:
+                        time.sleep(1)
+                        player['socket'].send(str(cartas).encode())
+
+def checkWinner(player):
+    if(player['jogada'] == 21):
+        time.sleep(1)
+        player['socket'].send("BLACKJACK!".encode())
+    elif(player['jogada'] > 21):
+        player['socket'].send("ESTOUROU!!".encode())
 
 def start_game(nome_sala):
     configGame(nome_sala)
     while True:
-        for player in sala['jogadores']:
-            print(player['nick'])
-            if(player['socket'] == 'dealer'):
-                pass
-            else: 
-                for p in sala['jogadores']:
-                    if(p['socket'] != 'dealer'):
-                        p['socket'].send(('Vez do jogador: ' + player['nick']).encode())
-                player['socket'].send('SEND'.encode())
-                command = player['socket'].recv(1024)
-                if(command.decode() == 'MORE'):
-                    print('teste')
-                elif(command.decode() == 'DONE'):
-                    pass
-                elif(command.decode() == 'SAIR'):
-                    pass
+        try:
+            for player in sala['jogadores']:
+                sendCards()
+                player['jogada'] = sumCards(player)
+                if(player['socket'] == 'dealer'):
+                    dealDealer()
+                else: 
+                    for p in sala['jogadores']:
+                        if(p['socket'] != 'dealer'):
+                            time.sleep(1)
+                            p['socket'].send(('Vez do jogador: ' + player['nick']).encode())
+
+                    time.sleep(1)
+                    player['socket'].send('SEND'.encode())
+                    command = player['socket'].recv(1024)
+
+                    if(command.decode() == 'MORE'):
+                        while(command.decode() != "DONE"):
+                            player['cartas'].append(sala['baralho'].deal())
+                            player['socket'].send(str(player['cartas'][len(player['cartas'])-1]).encode())
+                            time.sleep(1)
+                            player['socket'].send('SEND'.encode())
+                            command = player['socket'].recv(1024)
+                            player['jogada'] = sumCards(player)
+        except Exception as ex:
+            PrintException()
                 
-                    
+def dealDealer():
+    for player in sala['jogadores']:
+        if(player['socket'] != 'dealer'):
+            time.sleep(1)
+            player['socket'].send('Vez do Dealer'.encode())
+
 
 def addDealer(nome_sala):
     for player in sala['jogadores']:
@@ -181,7 +218,9 @@ def addDealer(nome_sala):
     'nick': 'dealer',
     'socket': 'dealer',
     'fichas': 100,
-    'cartas': []}
+    'cartas': [],
+    'jogada': 0
+    }
     sala['jogadores'].append(dealer)
 
 
@@ -201,7 +240,8 @@ def configGame(nome_sala):
                 'nick': player['nick'],
                 'socket': player['socket'],
                 'fichas': player['fichas'],
-                'cartas': []
+                'cartas': [],
+                'jogada': 0
             }
             sala['jogadores'].append(jogador)
         i = i + 1
@@ -209,17 +249,23 @@ def configGame(nome_sala):
     addDealer(nome_sala)
 
     sala['baralho'] = d
+    del sala['baralho'][53]
+    del sala['baralho'][52]
     sala['baralho'].shuffle()
 
     for player in sala['jogadores']:
         player['cartas'].append(sala['baralho'].deal())
         player['cartas'].append(sala['baralho'].deal())
         if(player['socket'] != 'dealer'):
-            print('aquiiiii')
+            time.sleep(1)
             player['socket'].send("Sua cartas são: ".encode())
+            time.sleep(1)
             player['socket'].send(str(player['cartas'][0]).encode())
+            time.sleep(1)
             player['socket'].send(str(player['cartas'][1]).encode())
+            time.sleep(1)
             player['socket'].send("Sua quantidade de fichas é: ".encode())
+            time.sleep(1)
             player['socket'].send(str(player['fichas']).encode())
 
     return
@@ -233,9 +279,22 @@ def treatCards(carta):
     return c
 
 
-def checkBlackjack(cartas):
-    pass
+def sumCards(player):
+    try:
+        values = 0
 
+        total = 0
+        for carta in player['cartas']:
+            values = values + (treatCards(carta))
+            
+        if(player['socket'] == 'dealer'):
+            pass
+        else:
+            player['socket'].send(('Somatoria: ' + str(values)).encode())
+        return values
+
+    except:
+        PrintException()
 
 tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -249,3 +308,10 @@ while True:
     _thread.start_new_thread(beforeGame, tuple([con, cliente]))
 
 tcp.close()
+
+
+#TODO: implementar Dealer
+#TODO: implementar vencedor da partida
+#TODO: implementar vencedor da rodada
+#TODO: aumentar aposta
+
